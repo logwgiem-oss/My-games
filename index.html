@@ -46,8 +46,9 @@
                 <button class="action-btn close-btn" onclick="closeGame()">✕ Close Game</button>
             </div>
         </div>
-        <div class="iframe-container" id="iframeWrapper">
-            <iframe id="gameFrame" allow="autoplay; gamepad; fullscreen"></iframe>
+        <div class="iframe-container">
+            <!-- Included necessary allow attributes for complete system compatibility -->
+            <iframe id="gameFrame" allow="autoplay; gamepad; fullscreen; screen-wake-lock;" allowfullscreen></iframe>
         </div>
     </div>
 
@@ -80,8 +81,8 @@
                     if (!row.trim()) return;
                     const columns = parseCsvRow(row);
                     if(columns.length >= 3) {
-                        const title = columns[1]; // Name of the game
-                        const url = columns[2];   // URL to game
+                        const title = columns[1]; 
+                        const url = columns[2];   
                         
                         if(title && url && (url.startsWith('http://') || url.startsWith('https://'))) {
                             htmlContent += `
@@ -106,30 +107,34 @@
         }
 
         function closeGame() {
-            // Drop fullscreen states if left open inside active window tracks
-            if (document.fullscreenElement) {
-                document.exitFullscreen();
+            if (document.fullscreenElement || document.webkitFullscreenElement) {
+                if (document.exitFullscreen) document.exitFullscreen();
+                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
             }
             document.getElementById('gameModal').style.display = 'none';
             document.getElementById('gameFrame').src = '';
             document.body.style.overflow = 'auto';
         }
 
-        // Native Fullscreen Engine Handler
+        // Universal Device Fullscreen Mode Engine Patch
         function toggleFullscreen() {
-            const element = document.getElementById('iframeWrapper');
+            const frame = document.getElementById('gameFrame');
             
-            if (!document.fullscreenElement) {
-                if (element.requestFullscreen) {
-                    element.requestFullscreen();
-                } else if (element.webkitRequestFullscreen) { /* Safari support */
-                    element.webkitRequestFullscreen();
-                } else if (element.msRequestFullscreen) { /* IE11 support */
-                    element.msRequestFullscreen();
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (frame.requestFullscreen) {
+                    frame.requestFullscreen();
+                } else if (frame.webkitRequestFullscreen) { /* Universal Safari / Mobile iOS patch */
+                    frame.webkitRequestFullscreen();
+                } else if (frame.mozRequestFullScreen) { /* Firefox patch */
+                    frame.mozRequestFullScreen();
+                } else if (frame.msRequestFullscreen) { /* Windows Phone patch */
+                    frame.msRequestFullscreen();
                 }
             } else {
                 if (document.exitFullscreen) {
                     document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
                 }
             }
         }
@@ -138,3 +143,4 @@
     </script>
 </body>
 </html>
+
