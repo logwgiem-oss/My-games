@@ -6,55 +6,13 @@
     <style>
         :root { --bg: #0f0c1b; --card: #1d1833; --accent: #a855f7; --text: #ffffff; }
         body { font-family: system-ui, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        header { text-align: center; margin-bottom: 30px; }
+        header { text-align: center; margin-bottom: 40px; }
         h1 { color: var(--accent); font-size: 2.5rem; margin: 0; }
-        
-        /* The Easy Text Link Creator Form */
-        .admin-box {
-            background: #110e24;
-            border: 2px dashed var(--accent);
-            padding: 20px;
-            border-radius: 12px;
-            max-width: 500px;
-            margin: 0 auto 40px auto;
-            text-align: center;
-        }
-        .admin-box input {
-            width: 90%;
-            padding: 10px;
-            margin: 8px 0;
-            background: #1d1833;
-            border: 1px solid #4c3e7a;
-            color: white;
-            border-radius: 6px;
-        }
-        .admin-box button {
-            background: var(--accent);
-            color: white;
-            border: none;
-            padding: 12px 24px;
-            border-radius: 6px;
-            cursor: pointer;
-            font-weight: bold;
-            margin-top: 10px;
-        }
-        .output-box {
-            display: none;
-            background: #000;
-            padding: 12px;
-            margin-top: 15px;
-            border-radius: 6px;
-            font-family: monospace;
-            color: #22c55e;
-            word-break: break-all;
-        }
-
-        /* The Grid and Cards */
         .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
         .game-card { background: var(--card); border-radius: 12px; padding: 50px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; text-align: center; font-weight: bold; text-transform: uppercase; transition: transform 0.2s; }
         .game-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(168,85,247,0.4); }
         
-        /* CrazyGames Style Theater Player Layout */
+        /* CrazyGames Theatre Player Layout Frame */
         .game-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 1000; flex-direction: column; }
         .modal-controls { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: #0b0914; border-bottom: 1px solid #231b40; }
         .close-btn { background: var(--accent); color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-weight: bold; }
@@ -66,20 +24,10 @@
 
     <header>
         <h1>MY ARCADE</h1>
-        <p>Play independent web games instantly in iframe theatre view</p>
+        <p>Play independent web games instantly inside iframe theatre mode</p>
     </header>
 
-    <!-- The Creator Dashboard Box -->
-    <div class="admin-box">
-        <h3>Link a New Game</h3>
-        <input type="text" id="gameName" placeholder="Enter Game Title">
-        <input type="text" id="gameLink" placeholder="Paste Uploaded Game Link (https://...)">
-        <button onclick="generateTextLine()">Generate TXT Data & Open GitHub</button>
-        <div class="output-box" id="outputBox"></div>
-    </div>
-
-    <!-- Main Grid View for Visitors -->
-    <main class="game-grid" id="gameGrid">Loading arcade games...</main>
+    <main class="game-grid" id="gameGrid">Loading arcade cabinet...</main>
 
     <div class="game-modal" id="gameModal">
         <div class="modal-controls">
@@ -92,61 +40,52 @@
     </div>
 
     <script>
-        // CONFIGURATION: Set your exact GitHub details here
-        const GITHUB_USERNAME = "YOUR_GITHUB_USERNAME"; 
-        const REPO_NAME = "YOUR_REPO_NAME";
-
-        // Reads your games.txt file and splits it into game items automatically
-        async function fetchGamesFromTxt() {
+        async function loadArcadeFromGoogleSheet() {
             try {
-                const response = await fetch(`games.txt?t=${Date.now()}`);
-                if (!response.ok) throw new Error();
-                const textData = await response.text();
-                
-                const grid = document.getElementById('gameGrid');
-                const lines = textData.split('\n').filter(line => line.trim() !== '');
-
-                if(lines.length === 0) {
-                    grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; color:#888;">No games linked inside games.txt yet.</p>`;
-                    return;
+                let csvUrl = localStorage.getItem('my_arcade_csv_link');
+                if(!csvUrl) {
+                    csvUrl = prompt("Paste your Google Sheet Published CSV Link here once to link your portal:");
+                    if(csvUrl) localStorage.setItem('my_arcade_csv_link', csvUrl);
                 }
 
-                grid.innerHTML = lines.map(line => {
-                    // Splits each line by the vertical bar | symbol
-                    const [title, url] = line.split('|');
-                    if (!title || !url) return '';
+                const response = await fetch(csvUrl);
+                const data = await response.text();
+                
+                // Splitting rows cleanly
+                const rows = data.split("\n").slice(1); // Skip row headers
+                const grid = document.getElementById('gameGrid');
+                
+                let htmlContent = "";
+                
+                rows.forEach(row => {
+                    if (!row.trim()) return;
+
+                    // Google Sheet CSV entries group columns using quoted blocks separating items: "timestamp","title","url"
+                    // Splitting by '","' ensures clean isolation even if names have standard characters
+                    const columns = row.split('","');
                     
-                    return `
-                        <div class="game-card" onclick="openGame('${url.trim()}', '${title.trim()}')">
-                            🕹️ <br><br> ${title.trim()}
-                        </div>
-                    `;
-                }).join('');
+                    if(columns.length >= 3) {
+                        // column[0] is the Timestamp (Skipped automatically)
+                        // column[1] is the Game Title
+                        // column[2] is the Game URL Link
+                        const title = columns[1].replace(/"/g, "").trim();
+                        const url = columns[2].replace(/"/g, "").trim();
+                        
+                        if(title && url) {
+                            htmlContent += `
+                                <div class="game-card" onclick="openGame('${url}', '${title}')">
+                                    🕹️ <br><br> ${title}
+                                </div>
+                            `;
+                        }
+                    }
+                });
+
+                grid.innerHTML = htmlContent || `<p style="grid-column:1/-1; text-align:center; color:#888;">No games active. Fill out your Google Form to add one!</p>`;
             } catch (err) {
-                document.getElementById('gameGrid').innerHTML = `<p style="grid-column:1/-1; text-align:center; color:#888;">Create games.txt in your repository to start seeing games.</p>`;
+                console.error(err);
+                document.getElementById('gameGrid').innerHTML = `<p style="grid-column:1/-1; text-align:center; color:red;">Error processing spreadsheet. Check link parameters.</p>`;
             }
-        }
-
-        // Formats your inputs so you can easily paste it into your txt file
-        function generateTextLine() {
-            const title = document.getElementById('gameName').value.trim();
-            const url = document.getElementById('gameLink').value.trim();
-
-            if (!title || !url) return alert("Please fill out both the Title and the Link!");
-
-            const formattedLine = `${title}|${url}`;
-            
-            const out = document.getElementById('outputBox');
-            out.style.display = 'block';
-            out.innerText = `👉 COPY THIS LINE:\n\n${formattedLine}\n\n(It has been automatically copied to your clipboard!)`;
-            
-            // Automatically copy to clipboard
-            navigator.clipboard.writeText(formattedLine);
-
-            // Opens your GitHub games.txt file in a new tab for instant editing
-            setTimeout(() => {
-                window.open(`https://github.com{GITHUB_USERNAME}/${REPO_NAME}/edit/main/games.txt`, '_blank');
-            }, 1500);
         }
 
         function openGame(url, title) {
@@ -162,7 +101,7 @@
             document.body.style.overflow = 'auto';
         }
 
-        window.addEventListener('DOMContentLoaded', fetchGamesFromTxt);
+        window.addEventListener('DOMContentLoaded', loadArcadeFromGoogleSheet);
     </script>
 </body>
 </html>
