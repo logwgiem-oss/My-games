@@ -15,27 +15,34 @@ jobs:
       - name: Checkout Source Files
         uses: actions/checkout@v4
 
-      - name: Parse Form Content
-        id: parse
-        uses: stefanbuck/github-issue-parser@v3
-        with:
-          template-path: .github/ISSUE_TEMPLATE/add-game.yml
-
-      - name: Safely Inject into JSON database
-        env:
-          GAME_TITLE: ${{ steps.parse.outputs.issueparser_game_name }}
-          GAME_URL: ${{ steps.parse.outputs.issueparser_game_url }}
+      - name: Extract Title and URL from Form
+        id: get_data
         run: |
-          if [ ! -f games.json ] || [ "$(cat games.json)" = "" ]; then
+          # Store raw issue text
+          echo "${{ github.event.issue.body }}" > raw_body.txt
+          
+          # Use grep to find lines after the form field headers
+          TITLE=$(grep -A 1 "### Game Title" raw_body.txt | tail -n 1 | xargs)
+          URL=$(grep -A 1 "### Game URL Link" raw_body.txt | tail -n 1 | xargs)
+          
+          # Set variables for next steps
+          echo "TITLE=$TITLE" >> $GITHUB_ENV
+          echo "URL=$URL" >> $GITHUB_ENV
+
+      - name: Inject into JSON database
+        run: |
+          # Create games.json if empty or missing
+          if [ ! -f games.json ] || [ "$(cat games.json)" = "" ] || [ "$(cat games.json)" = "null" ]; then
             echo "[]" > games.json
           fi
           
+          # Append the entries using node
           node -e "
             const fs = require('fs');
             const data = JSON.parse(fs.readFileSync('games.json', 'utf8'));
             data.push({
-              title: process.env.GAME_TITLE.trim(),
-              url: process.env.GAME_URL.trim()
+              title: process.env.TITLE,
+              url: process.env.URL
             });
             fs.writeFileSync('games.json', JSON.stringify(data, null, 2));
           "
@@ -45,7 +52,7 @@ jobs:
           git config --global user.name "Arcade Bot"
           git config --global user.email "arcadebot@github.com"
           git add games.json
-          git commit -m "Successfully linked new game to arcade"
+          git commit -m "Successfully linked game: ${TITLE}"
           git push
 
       - name: Close Form
