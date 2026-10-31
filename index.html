@@ -2,22 +2,89 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Arcade Portal</title>
     <style>
-        :root { --bg: #0f0c1b; --card: #1d1833; --accent: #a855f7; --text: #ffffff; }
-        body { font-family: system-ui, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
-        header { text-align: center; margin-bottom: 40px; }
-        h1 { color: var(--accent); font-size: 2.5rem; margin: 0; }
-        .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
-        .game-card { background: var(--card); border-radius: 12px; padding: 50px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; text-align: center; font-weight: bold; text-transform: uppercase; transition: transform 0.2s; }
-        .game-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(168,85,247,0.4); }
-        
-        /* CrazyGames Theatre Player Layout Frame */
-        .game-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 1000; flex-direction: column; }
-        .modal-controls { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: #0b0914; border-bottom: 1px solid #231b40; }
-        .close-btn { background: var(--accent); color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .iframe-container { flex-grow: 1; width: 100%; height: calc(100% - 60px); }
-        iframe { width: 100%; height: 100%; border: none; background: #000; }
+        :root { 
+            --bg: #0f0c1b; 
+            --card: #1d1833; 
+            --accent: #a855f7; 
+            --text: #ffffff; 
+        }
+        body { 
+            font-family: system-ui, -apple-system, sans-serif; 
+            background-color: var(--bg); 
+            color: var(--text); 
+            margin: 0; 
+            padding: 20px; 
+        }
+        header { 
+            text-align: center; 
+            margin-bottom: 40px; 
+        }
+        h1 { 
+            color: var(--accent); 
+            font-size: 2.5rem; 
+            margin: 0; 
+        }
+        .game-grid { 
+            display: grid; 
+            grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); 
+            gap: 20px; 
+            max-width: 1200px; 
+            margin: 0 auto; 
+        }
+        .game-card { 
+            background: var(--card); 
+            border-radius: 12px; 
+            padding: 40px 20px; 
+            box-shadow: 0 4px 15px rgba(0,0,0,0.3); 
+            cursor: pointer; 
+            text-align: center; 
+            font-weight: bold; 
+            text-transform: uppercase; 
+            transition: transform 0.2s, box-shadow 0.2s; 
+        }
+        .game-card:hover { 
+            transform: translateY(-3px); 
+            box-shadow: 0 8px 20px rgba(168,85,247,0.4); 
+        }
+        .game-modal { 
+            display: none; 
+            position: fixed; 
+            top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.96); 
+            z-index: 1000; 
+            flex-direction: column; 
+        }
+        .modal-controls { 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            padding: 15px 30px; 
+            background: #0b0914; 
+            border-bottom: 1px solid #231b40; 
+        }
+        .close-btn { 
+            background: var(--accent); 
+            color: white; 
+            border: none; 
+            padding: 10px 24px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold; 
+        }
+        .iframe-container { 
+            flex-grow: 1; 
+            width: 100%; 
+            height: calc(100% - 60px); 
+        }
+        iframe { 
+            width: 100%; 
+            height: 100%; 
+            border: none; 
+            background: #000; 
+        }
     </style>
 </head>
 <body>
@@ -40,19 +107,43 @@
     </div>
 
     <script>
+        // 1. PASTE YOUR PUBLIC GOOGLE SHEET CSV LINK INSIDE THESE QUOTES:
+        const GOOGLE_SHEET_CSV_URL = "PASTE_YOUR_LINK_HERE";
+
+        function parseCsvRow(rowText) {
+            let cells = [];
+            let currentCell = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < rowText.length; i++) {
+                let char = rowText[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                } else if (char === ',' && !inQuotes) {
+                    cells.push(currentCell.trim());
+                    currentCell = '';
+                } else {
+                    currentCell += char;
+                }
+            }
+            cells.push(currentCell.trim());
+            return cells;
+        }
+
         async function loadArcadeFromGoogleSheet() {
             try {
-                let csvUrl = localStorage.getItem('my_arcade_csv_link');
-                if(!csvUrl) {
-                    csvUrl = prompt("Paste your Google Sheet Published CSV Link here once to link your portal:");
-                    if(csvUrl) localStorage.setItem('my_arcade_csv_link', csvUrl);
+                if (!GOOGLE_SHEET_CSV_URL || GOOGLE_SHEET_CSV_URL === "https://docs.google.com/spreadsheets/u/0/d/1EkrZjxIhjXYgYSMoXjqadpIfzQyPC_2ILFBAvSD_Z3Q/htmlview") {
+                    document.getElementById('gameGrid').innerHTML = `<p style="grid-column:1/-1; text-align:center; color:#888;">Please edit index.html and add your Google Sheet URL link into the script code.</p>`;
+                    return;
                 }
 
-                const response = await fetch(csvUrl);
+                // Appending a live query timestamp forces mobile browsers to pull fresh form answers instantly
+                const freshUrl = GOOGLE_SHEET_CSV_URL + (GOOGLE_SHEET_CSV_URL.includes('?') ? '&' : '?') + 't=' + new Date().getTime();
+
+                const response = await fetch(freshUrl);
                 const data = await response.text();
                 
-                // Splitting rows cleanly
-                const rows = data.split("\n").slice(1); // Skip row headers
+                const rows = data.split(/\r?\n/).slice(1); // Skip row headers
                 const grid = document.getElementById('gameGrid');
                 
                 let htmlContent = "";
@@ -60,20 +151,16 @@
                 rows.forEach(row => {
                     if (!row.trim()) return;
 
-                    // Google Sheet CSV entries group columns using quoted blocks separating items: "timestamp","title","url"
-                    // Splitting by '","' ensures clean isolation even if names have standard characters
-                    const columns = row.split('","');
+                    const columns = parseCsvRow(row);
                     
+                    // Column 0 = Timestamp, Column 1 = Title, Column 2 = URL
                     if(columns.length >= 3) {
-                        // column[0] is the Timestamp (Skipped automatically)
-                        // column[1] is the Game Title
-                        // column[2] is the Game URL Link
-                        const title = columns[1].replace(/"/g, "").trim();
-                        const url = columns[2].replace(/"/g, "").trim();
+                        const title = columns[1];
+                        const url = columns[2];
                         
-                        if(title && url) {
+                        if(title && url && (url.startsWith('http://') || url.startsWith('https://'))) {
                             htmlContent += `
-                                <div class="game-card" onclick="openGame('${url}', '${title}')">
+                                <div class="game-card" onclick="openGame('${url}', '${title.replace(/'/g, "\\'")}')">
                                     🕹️ <br><br> ${title}
                                 </div>
                             `;
@@ -81,10 +168,10 @@
                     }
                 });
 
-                grid.innerHTML = htmlContent || `<p style="grid-column:1/-1; text-align:center; color:#888;">No games active. Fill out your Google Form to add one!</p>`;
+                grid.innerHTML = htmlContent || `<p style="grid-column:1/-1; text-align:center; color:#888;">No valid games active yet. Submit your Google Form to view your first title!</p>`;
             } catch (err) {
                 console.error(err);
-                document.getElementById('gameGrid').innerHTML = `<p style="grid-column:1/-1; text-align:center; color:red;">Error processing spreadsheet. Check link parameters.</p>`;
+                document.getElementById('gameGrid').innerHTML = `<p style="grid-column:1/-1; text-align:center; color:red;">Error loading layout sheet data.</p>`;
             }
         }
 
