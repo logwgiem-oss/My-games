@@ -1,0 +1,19 @@
+name: 🎮 Link a New Game
+description: Add a game title and external URL link to the arcade portal.
+title: "[New Game]: "
+labels: ["new-game"]
+body:
+  - type: input
+    id: game_name
+    attributes:
+      label: Game Title
+      placeholder: "e.g., Infinity Runner"
+    validations:
+      required: true
+  - type: input
+    id: game_url
+    attributes:
+      label: Game URL Link
+      placeholder: "https://netlify.app"
+    validations:
+      required: true
