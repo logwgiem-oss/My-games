@@ -1,0 +1,53 @@
+name: Arcade Database Engine
+
+on:
+  issues:
+    types: [opened]
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  add-game-to-portal:
+    if: contains(github.event.issue.labels.*.name, 'new-game')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Source Files
+        uses: actions/checkout@v4
+
+      - name: Parse Form Content
+        id: parse
+        uses: edictum/issue-parser@v1
+        with:
+          template-path: .github/ISSUE_TEMPLATE/add-game.yml
+
+      - name: Inject into JSON database
+        run: |
+          if [ ! -f games.json ]; then
+            echo "[]" > games.json
+          fi
+          
+          node -e '
+            const fs = require("fs");
+            const data = JSON.parse(fs.readFileSync("games.json", "utf8"));
+            data.push({
+              title: `${{ steps.parse.outputs.game_name }}`,
+              url: `${{ steps.parse.outputs.game_url }}`
+            });
+            fs.writeFileSync("games.json", JSON.stringify(data, null, 2));
+          '
+
+      - name: Commit and Save Permanently
+        run: |
+          git config --global user.name "Arcade Bot"
+          git config --global user.email "arcadebot@github.com"
+          git add games.json
+          git commit -m "Successfully linked game: ${{ steps.parse.outputs.game_name }}"
+          git push
+
+      - name: Close Form
+        run: |
+          gh issue close ${{ github.event.issue.number }} --reason "completed"
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
