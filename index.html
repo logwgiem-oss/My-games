@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>My Arcade Portal</title>
+    <style>
+        :root { --bg: #0f0c1b; --card: #1d1833; --accent: #a855f7; --text: #ffffff; }
+        body { font-family: system-ui, sans-serif; background-color: var(--bg); color: var(--text); margin: 0; padding: 20px; }
+        header { text-align: center; margin-bottom: 40px; }
+        h1 { color: var(--accent); font-size: 2.5rem; }
+        .game-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 20px; max-width: 1200px; margin: 0 auto; }
+        .game-card { background: var(--card); border-radius: 12px; padding: 40px 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.3); cursor: pointer; text-align: center; font-weight: bold; text-transform: uppercase; transition: transform 0.2s; }
+        .game-card:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(168,85,247,0.4); }
+        
+        /* CrazyGames Theatre Player Layout */
+        .game-modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.96); z-index: 1000; flex-direction: column; }
+        .modal-controls { display: flex; justify-content: space-between; align-items: center; padding: 15px 30px; background: #0b0914; border-bottom: 1px solid #231b40; }
+        .close-btn { background: var(--accent); color: white; border: none; padding: 10px 24px; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .iframe-container { flex-grow: 1; width: 100%; height: calc(100% - 60px); }
+        iframe { width: 100%; height: 100%; border: none; background: #000; }
+    </style>
+</head>
+<body>
+
+    <header>
+        <h1>MY ARCADE</h1>
+        <p>Click a cabinet block to play instantly in screen overlay mode</p>
+    </header>
+
+    <main class="game-grid" id="gameGrid">Loading arcade cabinet list...</main>
+
+    <div class="game-modal" id="gameModal">
+        <div class="modal-controls">
+            <span style="font-size: 1.3rem; font-weight: bold; color: var(--accent);" id="activeTitle">Game Player</span>
+            <button class="close-btn" onclick="closeGame()">✕ Close Game</button>
+        </div>
+        <div class="iframe-container">
+            <iframe id="gameFrame" allow="autoplay; gamepad; fullscreen"></iframe>
+        </div>
+    </div>
+
+    <script>
+        const GITHUB_USERNAME = "YOUR_GITHUB_USERNAME"; 
+        const REPO_NAME = "YOUR_REPO_NAME";
+
+        async function fetchSavedGames() {
+            try {
+                const response = await fetch(`https://githubusercontent.com{GITHUB_USERNAME}/${REPO_NAME}/main/games.json?t=${Date.now()}`);
+                if (!response.ok) throw new Error();
+                const games = await response.json();
+                const grid = document.getElementById('gameGrid');
+
+                if(games.length === 0) {
+                    grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; color:#888;">No games linked yet.</p>`;
+                    return;
+                }
+
+                grid.innerHTML = games.map(game => `
+                    <div class="game-card" onclick="openGameIframe('${game.url}', '${game.title}')">
+                        ${game.title}
+                    </div>
+                `).join('');
+            } catch (err) {
+                document.getElementById('gameGrid').innerHTML = `<p style="grid-column:1/-1; text-align:center; color:#888;">No games linked yet.</p>`;
+            }
+        }
+
+        function openGameIframe(url, title) {
+            document.getElementById('activeTitle').innerText = title;
+            document.getElementById('gameFrame').src = url;
+            document.getElementById('gameModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeGame() {
+            document.getElementById('gameModal').style.display = 'none';
+            document.getElementById('gameFrame').src = '';
+            document.body.style.overflow = 'auto';
+        }
+
+        window.addEventListener('DOMContentLoaded', fetchSavedGames);
+    </script>
+</body>
+</html>
