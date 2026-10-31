@@ -26,6 +26,41 @@
 
         .iframe-container { flex-grow: 1; width: 100%; height: calc(100% - 60px); position: relative; }
         iframe { width: 100%; height: 100%; border: none; background: #000; display: block; }
+
+        /* CSS CSS-based Fullscreen override mode */
+        .game-modal.css-fullscreen {
+            position: fixed !important;
+            top: 0 !important; left: 0 !important;
+            width: 100vw !important; height: 100vh !important;
+            z-index: 99999 !important;
+        }
+        .game-modal.css-fullscreen .modal-controls {
+            display: none !important; /* Hides top control bar in true maximum view */
+        }
+        .game-modal.css-fullscreen .iframe-container {
+            height: 100vh !important;
+        }
+
+        /* Floating Exit button for CSS Fullscreen mode on mobile */
+        .floating-exit-btn {
+            display: none;
+            position: fixed;
+            top: 15px;
+            right: 15px;
+            z-index: 100000;
+            background: rgba(168, 85, 247, 0.8);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            font-weight: bold;
+            font-size: 1.2rem;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+        }
     </style>
 </head>
 <body>
@@ -47,10 +82,12 @@
             </div>
         </div>
         <div class="iframe-container">
-            <!-- Included necessary allow attributes for complete system compatibility -->
             <iframe id="gameFrame" allow="autoplay; gamepad; fullscreen; screen-wake-lock;" allowfullscreen></iframe>
         </div>
     </div>
+
+    <!-- Floating Back button when header is hidden -->
+    <button class="floating-exit-btn" id="floatingExit" onclick="toggleFullscreen()">✕</button>
 
     <script>
         const GOOGLE_SHEET_CSV_URL = "https://docs.google.com/spreadsheets/d/e/2PACX-1vQBaztnaD1I_SMxLCmZLuvN3Ac08AofppS-EejonWALQ7g8EULniEWPrbnmo6GuACKUsGftDhOtDQ_p/pub?output=csv";
@@ -107,35 +144,27 @@
         }
 
         function closeGame() {
-            if (document.fullscreenElement || document.webkitFullscreenElement) {
-                if (document.exitFullscreen) document.exitFullscreen();
-                else if (document.webkitExitFullscreen) document.webkitExitFullscreen();
-            }
-            document.getElementById('gameModal').style.display = 'none';
+            const modal = document.getElementById('gameModal');
+            modal.classList.remove('css-fullscreen');
+            document.getElementById('floatingExit').style.display = 'none';
+            modal.style.display = 'none';
             document.getElementById('gameFrame').src = '';
             document.body.style.overflow = 'auto';
         }
 
-        // Universal Device Fullscreen Mode Engine Patch
+        // Bulletproof CSS Fullscreen Toggle Method
         function toggleFullscreen() {
-            const frame = document.getElementById('gameFrame');
+            const modal = document.getElementById('gameModal');
+            const floatingExit = document.getElementById('floatingExit');
             
-            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
-                if (frame.requestFullscreen) {
-                    frame.requestFullscreen();
-                } else if (frame.webkitRequestFullscreen) { /* Universal Safari / Mobile iOS patch */
-                    frame.webkitRequestFullscreen();
-                } else if (frame.mozRequestFullScreen) { /* Firefox patch */
-                    frame.mozRequestFullScreen();
-                } else if (frame.msRequestFullscreen) { /* Windows Phone patch */
-                    frame.msRequestFullscreen();
-                }
+            if (!modal.classList.contains('css-fullscreen')) {
+                // Force full device screen layout size overlay
+                modal.classList.add('css-fullscreen');
+                floatingExit.style.display = 'flex'; // Show floating close cross button
             } else {
-                if (document.exitFullscreen) {
-                    document.exitFullscreen();
-                } else if (document.webkitExitFullscreen) {
-                    document.webkitExitFullscreen();
-                }
+                // Drop out of maximum layout back to theatre menu box
+                modal.classList.remove('css-fullscreen');
+                floatingExit.style.display = 'none';
             }
         }
 
@@ -143,4 +172,3 @@
     </script>
 </body>
 </html>
-
