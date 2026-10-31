@@ -10,7 +10,6 @@ permissions:
 
 jobs:
   add-game-to-portal:
-    if: contains(github.event.issue.labels.*.name, 'new-game')
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Source Files
@@ -27,20 +26,10 @@ jobs:
           GAME_TITLE: ${{ steps.parse.outputs.issueparser_game_name }}
           GAME_URL: ${{ steps.parse.outputs.issueparser_game_url }}
         run: |
-          # 1. Guarantee file exists
           if [ ! -f games.json ] || [ "$(cat games.json)" = "" ]; then
             echo "[]" > games.json
           fi
           
-          # 2. Extract, format and clean inputs into temporary files
-          echo "$GAME_TITLE" > title.txt
-          echo "$GAME_URL" > url.txt
-          
-          # 3. Clean trailing white space or return breaks
-          TITLE=$(tr -d '\r\n' < title.txt)
-          URL=$(tr -d '\r\n' < url.txt)
-          
-          # 4. Use node engine to append cleanly
           node -e "
             const fs = require('fs');
             const data = JSON.parse(fs.readFileSync('games.json', 'utf8'));
@@ -50,9 +39,6 @@ jobs:
             });
             fs.writeFileSync('games.json', JSON.stringify(data, null, 2));
           "
-          
-          # 5. Clean up tracking text dumps
-          rm title.txt url.txt
 
       - name: Commit and Save Permanently
         run: |
