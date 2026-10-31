@@ -16,39 +16,50 @@ jobs:
       - name: Checkout Source Files
         uses: actions/checkout@v4
 
-      # Highly stable, official community parser
       - name: Parse Form Content
         id: parse
         uses: stefanbuck/github-issue-parser@v3
         with:
           template-path: .github/ISSUE_TEMPLATE/add-game.yml
 
-      # Safely inject values using environment tokens to avoid breakages from special characters
-      - name: Inject into JSON database
+      - name: Safely Inject into JSON database
         env:
           GAME_TITLE: ${{ steps.parse.outputs.issueparser_game_name }}
           GAME_URL: ${{ steps.parse.outputs.issueparser_game_url }}
         run: |
-          if [ ! -f games.json ]; then
+          # 1. Guarantee file exists
+          if [ ! -f games.json ] || [ "$(cat games.json)" = "" ]; then
             echo "[]" > games.json
           fi
           
-          node -e '
-            const fs = require("fs");
-            const data = JSON.parse(fs.readFileSync("games.json", "utf8"));
+          # 2. Extract, format and clean inputs into temporary files
+          echo "$GAME_TITLE" > title.txt
+          echo "$GAME_URL" > url.txt
+          
+          # 3. Clean trailing white space or return breaks
+          TITLE=$(tr -d '\r\n' < title.txt)
+          URL=$(tr -d '\r\n' < url.txt)
+          
+          # 4. Use node engine to append cleanly
+          node -e "
+            const fs = require('fs');
+            const data = JSON.parse(fs.readFileSync('games.json', 'utf8'));
             data.push({
-              title: process.env.GAME_TITLE,
-              url: process.env.GAME_URL
+              title: process.env.GAME_TITLE.trim(),
+              url: process.env.GAME_URL.trim()
             });
-            fs.writeFileSync("games.json", JSON.stringify(data, null, 2));
-          '
+            fs.writeFileSync('games.json', JSON.stringify(data, null, 2));
+          "
+          
+          # 5. Clean up tracking text dumps
+          rm title.txt url.txt
 
       - name: Commit and Save Permanently
         run: |
           git config --global user.name "Arcade Bot"
           git config --global user.email "arcadebot@github.com"
           git add games.json
-          git commit -m "Successfully linked game"
+          git commit -m "Successfully linked new game to arcade"
           git push
 
       - name: Close Form
