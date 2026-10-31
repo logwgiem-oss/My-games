@@ -16,13 +16,18 @@ jobs:
       - name: Checkout Source Files
         uses: actions/checkout@v4
 
+      # Highly stable, official community parser
       - name: Parse Form Content
         id: parse
-        uses: edictum/issue-parser@v1
+        uses: stefanbuck/github-issue-parser@v3
         with:
           template-path: .github/ISSUE_TEMPLATE/add-game.yml
 
+      # Safely inject values using environment tokens to avoid breakages from special characters
       - name: Inject into JSON database
+        env:
+          GAME_TITLE: ${{ steps.parse.outputs.issueparser_game_name }}
+          GAME_URL: ${{ steps.parse.outputs.issueparser_game_url }}
         run: |
           if [ ! -f games.json ]; then
             echo "[]" > games.json
@@ -32,8 +37,8 @@ jobs:
             const fs = require("fs");
             const data = JSON.parse(fs.readFileSync("games.json", "utf8"));
             data.push({
-              title: `${{ steps.parse.outputs.game_name }}`,
-              url: `${{ steps.parse.outputs.game_url }}`
+              title: process.env.GAME_TITLE,
+              url: process.env.GAME_URL
             });
             fs.writeFileSync("games.json", JSON.stringify(data, null, 2));
           '
@@ -43,7 +48,7 @@ jobs:
           git config --global user.name "Arcade Bot"
           git config --global user.email "arcadebot@github.com"
           git add games.json
-          git commit -m "Successfully linked game: ${{ steps.parse.outputs.game_name }}"
+          git commit -m "Successfully linked game"
           git push
 
       - name: Close Form
