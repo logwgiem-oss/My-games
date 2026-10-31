@@ -1,1 +1,1 @@
-Infinity Runner|https://netlify.app
+Infinity Runner|https://infinitity-runner.netlify.app/
